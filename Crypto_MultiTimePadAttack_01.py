@@ -10,24 +10,107 @@
 #-------------------------------------------------------------------------------
 
 def main():
-    texts = prepareTexts()
-##    lowerCaseAnalysis = []
-##    upperCaseAnalysis = []
-##    for i in range(0, len(texts)):
-##        for j in range(0, len(texts)):
-##            if i != j:
-##                compared =  combiner(texts[i], texts[j])
-##                #print compared
-##                charCounter = 0
-##                for c in compared:
-##                    if c >= 97:
-##                        lowerCaseAnalysis.append(((i, j), charCounter))
-##                    if c in range(65,91):
-##                        upperCaseAnalysis.append(((i, j), charCounter))
-##                    charCounter+=1
-    #print lowerCaseAnalysis
-    #print upperCaseAnalysis
-    print getSpacesForText(texts, 1)
+    text11 = '32510ba9babebbbefd001547a810e67149caee11d945cd7fc81a05e9f85aac650e9052ba6a8cd8257bf14d13e6f0a803b54fde9e77472dbff89d71b57bddef121336cb85ccb8f3315f4b52e301d16e9f52f904'
+    rawTexts = prepareTexts()
+    texts = []
+    for text in rawTexts:
+        texts.append(convertTextToInts(text))
+    allPossibleSpaces = getPossibleSpaces(texts)
+    allSpacesFrequencies = getSpacesFrequensies(allPossibleSpaces)
+    groupedFrequencies = groupedSpacesFrequencies(allSpacesFrequencies)
+    print groupedFrequencies[0]
+
+    key = []
+
+    for textsIterator in range(0, len(texts)):
+        text = texts[textsIterator]
+        for i in range(0, len(text)):
+            isSpace = False
+            for space in groupedFrequencies[textsIterator]:
+                if space[0] == i and space[1] > 3:
+                    if (i >= len(key)):
+                        key.append(text[i] ^ ord(' '))
+                    else:
+                        key[i] = text[i] ^ ord(' ')
+                    isSpace = True
+            if not isSpace and (i >= len(key)): key.append(0)
+        print xorTextWithKey(convertTextToInts(text11), key)
+
+##    for text in texts:
+##        print xorTextWithKey(text, key)
+
+    #for text in texts: print xorTextWithKey(text, key)
+    print xorTextWithKey(convertTextToInts(text11), key)
+
+    res = 'The secret message is: When using a stream cipher, never use the key more than once'
+    #Let's just take a look at other messages
+    trueKey = xorTextWithKey(convertTextToInts(res.encode('hex')),convertTextToInts(text11))
+    msg1 = xorTextWithKey(convertTextToInts(trueKey.encode('hex')),texts[0])
+
+
+
+def xorTextWithKey(text, key):
+    xoredText = []
+    for i in range(0, len(text)):
+        if (i > len(key) - 1):
+            break
+        xoredText.append(text[i] ^ key[i])
+    string = ''
+    for xorResult in xoredText:
+        string = string + chr(xorResult)
+    return string
+
+
+def tupleComparer(tuple):
+    return tuple[1]
+
+def groupedSpacesFrequencies(frequencies):
+    postitionFrequencies = []
+    for frequenciesForText in frequencies:
+        positionFrequencyTuples = []
+        i = 0
+        counter = 1
+        while True:
+            if frequenciesForText[i] == frequenciesForText[i + 1]:
+                counter += 1
+                if (i + 1 == len(frequenciesForText) - 1):
+                    positionFrequencyTuples.append((frequenciesForText[i], counter)) # last pair
+                    break
+            else:
+                positionFrequencyTuples.append((frequenciesForText[i], counter))
+                counter = 1
+                if (i + 1 == len(frequenciesForText) - 1):
+                    positionFrequencyTuples.append((frequenciesForText[i + 1], counter))
+                    break
+            i += 1
+        postitionFrequencies.append(sorted(positionFrequencyTuples, key=tupleComparer, reverse=True))
+    return postitionFrequencies
+
+def getSpacesFrequensies(allPossibleSpaces):
+    allConcated = []
+    for i in range (0, len(allPossibleSpaces)):
+        concatenaded = []
+        for j in allPossibleSpaces[i]:
+            for n in j:
+                concatenaded.append(n)
+        concatenaded.sort()
+        allConcated.append(concatenaded)
+    return allConcated
+
+def getPossibleSpaces(texts):
+    allPositions = [] # Store all lists of possible spaces
+    for i in range(0, len(texts)):
+        positionsForTextI = [] # lists of possible spaces for texts[i]
+        for j in range(0, len(texts)):
+            if i != j:
+                positions = [] # possible spaces in texts[i] and texts[j]
+                tuples = zip(texts[i], texts[j])
+                for position in range(0, len(tuples)):
+                    if (tuples[position][0] ^ tuples[position][1]) in range(65, 91):
+                        positions.append(position)
+                positionsForTextI.append(positions)
+        allPositions.append(positionsForTextI)
+    return allPositions
 
 def convertTextToInts(text):
     iterator = 0
@@ -36,65 +119,6 @@ def convertTextToInts(text):
         result.append(int(text[iterator] + text[iterator + 1],16))
         iterator += 2
     return result
-
-def getSpacesForText(texts, selectedTextIndex):
-    res = []
-    maybespaces = []
-    for i in range(0, len(texts)):
-        if i != selectedTextIndex:
-            selectedTextInts = convertTextToInts(texts[selectedTextIndex])
-            currentTextInts = convertTextToInts(texts[i])
-            tuples = zip(selectedTextInts, currentTextInts)
-            ordRes = []
-
-            for a, b in tuples:
-                ordRes.append(a ^ b)
-            res = ordRes
-            spaces = []
-            for j in range(0, len(res)):
-                if res[j] in range(65, 91):
-                    spaces.append(j)
-            maybespaces.append(spaces)
-    spaceIndicesDictionary = []
-    for i in range(0, len(maybespaces)):
-        for j in range (0, len(maybespaces)):
-            if i != j:
-                for firstSpaces in maybespaces[i]:
-                    for secondspaces in maybespaces[j]:
-                        if firstSpaces == secondspaces:
-                            spaceIndicesDictionary = increaseSpaceIndexQuantity(spaceIndicesDictionary, i)
-    return spaceIndicesDictionary
-
-
-
-def increaseSpaceIndexQuantity(dictionary, index):
-    for indexQuantityTuple in dictionary:
-        if indexQuantityTuple[0] == index:
-            # I can't directly assign values to tuples' parts
-            indexQuantityTuple = (indexQuantityTuple[0], indexQuantityTuple[1] + 1)
-            return dictionary
-    # No breaks meads index was not found
-    dictionary.append((index, 1))
-    return dictionary
-
-
-def combiner(msg1, msg2):
-    iterator = 0
-    f = []
-    s = []
-    while iterator < len(msg1) - 1:
-        f.append(msg1[iterator] + msg1[iterator + 1])
-        iterator+=2
-    iterator = 0
-    while iterator < len(msg2) - 1:
-        s.append(msg2[iterator] + msg2[iterator + 1])
-        iterator+=2
-
-    tuples = zip(f, s)
-    res = []
-    for x, y in tuples:
-        res.append(ord(chr(int(x, 16))) ^ ord(chr(int(y, 16))))
-    return res
 
 def prepareTexts():
     text1 = '315c4eeaa8b5f8aaf9174145bf43e1784b8fa00dc71d885a804e5ee9fa40b16349c146fb778cdf2d3aff021dfff5b403b510d0d0455468aeb98622b137dae857553ccd8883a7bc37520e06e515d22c954eba5025b8cc57ee59418ce7dc6bc41556bdb36bbca3e8774301fbcaa3b83b220809560987815f65286764703de0f3d524400a19b159610b11ef3e'
